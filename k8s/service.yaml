@@ -1,0 +1,13 @@
+# service ger poddarna ett stabilt namn och en ip
+apiVersion: v1
+kind: Service
+metadata:
+  name: churn-api
+spec: # clusterip = nåbar bara inifrån klustret
+  type: ClusterIP
+  selector: # skickar trafik till alla poddar med den här etiketten
+    app: churn-api
+  
+  ports:
+    - port: 80 # porten servicen tar emot på
+      targetPort: 8000 # porten i containerna som trafiken skickas till
