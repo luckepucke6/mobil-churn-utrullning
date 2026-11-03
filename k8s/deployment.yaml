@@ -1,0 +1,53 @@
+apiVersion: apps/v1 
+kind: Deployment
+metadata:
+  name: churn-api
+  labels:
+    app: churn-api
+spec:
+  replicas: 2 # 2 kopior, trafiken sprids.
+
+  selector:
+    matchLabels:
+      app: churn-api
+  
+  # byter poddarna gradvis, inte alla på en gång
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+# mallen för varje podd som deployment skapar
+  template:
+    metadata:
+      labels:
+        app: churn-api
+    spec:
+      containers:
+        - name: churn-api
+          image: ghcr.io/luckepucke6/mobil-churn-utrullning:d95fea4cc614eddeb4063cbd256ed3731b1d48ce
+          ports:
+            - containerPort: 8000 # uvicorn lyssnar på 8000, samma som i dockerfile
+          resources:
+            requests: # vad som reserveras åt podden
+              cpu: 80m
+              memory: 128Mi
+            limits: # taket, över minnesgränsen så dödas containern
+              cpu: 80m
+              memory: 512Mi
+          
+          readinessProbe: # kollar om podden får ta emot trafik ännu, servicen och rolling update väntar på att den blir ready
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          livenessProbe: # kollar om processen fortfarande lever, misslyckas den 3 gånger i rad så startas containern om
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15 # senare än readiness, så en långsam start inte ses som en krasch
+            periodSeconds: 10
+            failureThreshold: 3
