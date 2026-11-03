@@ -34,7 +34,7 @@ spec:
               cpu: 80m
               memory: 128Mi
             limits: # taket, över minnesgränsen så dödas containern
-              cpu: 80m
+              cpu: 500m
               memory: 512Mi
           
           readinessProbe: # kollar om podden får ta emot trafik ännu, servicen och rolling update väntar på att den blir ready
