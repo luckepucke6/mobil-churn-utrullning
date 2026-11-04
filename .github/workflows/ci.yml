@@ -22,6 +22,7 @@ on:
     - uv.lock
     - Dockerfile
     - .dockerignore
+    - "k8s/**"
   pull_request:
     branches: [main]
     paths:
@@ -33,6 +34,7 @@ on:
     - uv.lock
     - Dockerfile
     - .dockerignore
+    - "k8s/**"
   schedule:
     - cron: "0 5 * * 1"
 
@@ -184,3 +186,38 @@ jobs:
       - name: Visa containerloggar
         if: failure()
         run: docker logs churn-smoke || true
+  
+    # Rullar ut den image som build-image just byggde och pushade.
+  deploy:
+    needs: build-image                     # bara en image som klarat smoke-testet får rullas ut
+    if: github.ref == 'refs/heads/main'    # aldrig från PR:er eller andra grenar
+    runs-on: ubuntu-latest                 # kubectl finns redan installerat här
+    # Kopplar jobbet till miljön: körningen pausar tills en required reviewer godkänner,
+    # och först då får jobbet läsa miljöns secrets (KUBECONFIG).
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      # Kubeconfigen finns bara som secret och skrivs till en fil som försvinner med runnern.
+      - name: Skriv kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      # Byter image-taggen i manifestet till den här körningens commit.
+      # Då är det alltid main som avgör vad som kör, inte en hårdkodad SHA.
+      - name: Sätt image-tagg till commitens SHA
+        run: |
+          sed -i "s|image: ghcr.io/.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|" k8s/deployment.yaml
+
+      - name: Rulla ut
+        run: |
+          kubectl apply -f k8s/
+          kubectl annotate deployment/churn-api kubernetes.io/change-cause="CI ${{ github.sha }}" --overwrite
+          kubectl rollout status deployment/churn-api --timeout=180s
+
+      # Blir poddarna aldrig ready inom 3 min rullar vi tillbaka automatiskt.
+      - name: Rulla tillbaka vid fel
+        if: failure()
+        run: kubectl rollout undo deployment/churn-api
