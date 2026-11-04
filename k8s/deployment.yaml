@@ -26,7 +26,7 @@ spec:
     spec:
       containers:
         - name: churn-api
-          image: ghcr.io/luckepucke6/mobil-churn-utrullning:d95fea4cc614eddeb4063cbd256ed3731b1d48ce
+          image: ghcr.io/luckepucke6/mobil-churn-utrullning:b5c860d8c2a816745c676f6ac4ddb55ef6eacf5c
           ports:
             - containerPort: 8000 # uvicorn lyssnar på 8000, samma som i dockerfile
           resources:
