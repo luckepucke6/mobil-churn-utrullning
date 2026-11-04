@@ -208,7 +208,8 @@ jobs:
       # Byter image-taggen i manifestet till den här körningens commit.
       # Då är det alltid main som avgör vad som kör, inte en hårdkodad SHA.
       - name: Sätt image-tagg till commitens SHA
-        run: sed -i "s|image: ghcr.io/.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|" k8s/deployment.yaml
+        run: |
+          sed -i "s|image: ghcr.io/.*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|" k8s/deployment.yaml
 
       - name: Rulla ut
         run: |
